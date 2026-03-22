@@ -177,17 +177,16 @@
         import { initializeApp } from "firebase/app";
         import { getDatabase, ref, set, onValue } from "firebase/database";
 
-        // 已成功整合您的 Firebase 配置
-        const firebaseConfig = {
-            apiKey: "AIzaSyDZZlWitVqgNDU5M65seP-WIAp_hYwyHzM",
-            authDomain: "journey-b926c.firebaseapp.com",
-            databaseURL: "https://journey-b926c-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "journey-b926c",
-            storageBucket: "journey-b926c.firebasestorage.app",
-            messagingSenderId: "45463991790",
-            appId: "1:45463991790:web:67997e40fb20c7eff50aff",
-            measurementId: "G-4WG4QXYC6Z"
-        };
+    constconst firebaseConfig = {
+  apiKey: "AIzaSyDZZlWitVqgNDU5M65seP-WIAp_hYwyHzM",
+  authDomain: "journey-b926c.firebaseapp.com",
+  databaseURL: "https://journey-b926c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "journey-b926c",
+  storageBucket: "journey-b926c.firebasestorage.app",
+  messagingSenderId: "45463991790",
+  appId: "1:45463991790:web:67997e40fb20c7eff50aff",
+  measurementId: "G-4WG4QXYC6Z"
+};
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
