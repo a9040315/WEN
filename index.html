@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧸 泰國之旅 ✈️💖 (大字清晰版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+            "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+        }
+    }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap');
+        
+        :root { 
+            --jp-indigo: #3E517A; 
+            --jp-cream: #FAF7F0; 
+            --jp-charcoal: #333333; 
+            --jp-accent-red: #B74F41; 
+            --jp-bamboo: #7F9A65; 
+        }
+
+        /* 強制全局最小字體為 16px */
+        html { font-size: 16px; } 
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: var(--jp-cream); 
+            color: var(--jp-charcoal);
+            font-size: 1rem; /* 16px */
+            line-height: 1.6;
+        }
+
+        h1, .serif-font { font-family: 'Noto Serif TC', serif; }
+        
+        /* 針對原本過小的 Tailwind class 進行強制覆蓋 */
+        .text-\[10px\], .text-xs, .text-sm { font-size: 1rem !important; }
+        .text-base { font-size: 1.125rem !important; } /* 18px */
+        
+        .header-cell { 
+            background-color: var(--jp-indigo); 
+            color: white; 
+            padding: 16px 12px; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            font-size: 1.1rem; 
+        }
+
+        .tab-btn { padding: 16px 28px; font-weight: 600; cursor: pointer; transition: 0.3s; border-bottom: 4px solid transparent; font-size: 1.125rem; }
+        .active-tab { color: var(--jp-indigo); border-bottom: 4px solid var(--jp-indigo); }
+        
+        .editable-content { padding: 4px 8px; border-radius: 4px; transition: 0.2s; min-height: 1.5em; display: inline-block; }
+        .is-editing .editable-content { background: #fff9c4; border: 1px solid #facc15; outline: none; }
+        
+        input, select, button { font-size: 1rem !important; min-height: 44px; }
+        .date-input-table { background: transparent; border: none; color: #3E517A; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        
+        .is-editing .split-checkbox { cursor: pointer; opacity: 1; transform: scale(1.2); }
+        input[type="checkbox"] { width: 1.2rem; height: 1.2rem; vertical-align: middle; }
+    </style>
+</head>
+<body class="p-2 sm:p-4">
+    <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-stone-200">
+        <header class="p-8 bg-[var(--jp-indigo)] text-white flex justify-between items-center">
+            <h1 class="text-3xl font-bold serif-font tracking-widest">🧸 泰國之旅 ✈️💖</h1>
+            <span id="syncStatus" class="bg-white/20 px-4 py-2 rounded-full text-red-200 font-bold">🔴 連線中...</span>
+        </header>
+
+        <div class="flex bg-stone-100 border-b overflow-x-auto">
+            <div onclick="switchPage('itinerary')" id="tab-itinerary" class="tab-btn active-tab whitespace-nowrap">📅 行程規劃</div>
+            <div onclick="switchPage('split')" id="tab-split" class="tab-btn whitespace-nowrap">💰 記帳與統計</div>
+        </div>
+
+        <div id="split-page" class="p-4 sm:p-8 hidden">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                <div class="space-y-8">
+                    <div class="bg-stone-50 p-8 rounded-2xl border border-stone-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold serif-font text-[var(--jp-indigo)]">💸 新增支出</h2>
+                            <button onclick="toggleManager()" class="bg-stone-200 px-4 py-2 rounded-lg hover:bg-stone-300 font-bold">⚙️ 管理名單</button>
+                        </div>
+
+                        <div id="listManager" class="hidden p-6 bg-white border rounded-xl mb-6">
+                            <div class="mb-4">
+                                <p class="font-bold border-b-2 mb-2 flex justify-between text-lg">付款人管理 <button onclick="addNewPayer()" class="text-blue-500">+新增</button></p>
+                                <div id="payerList" class="flex flex-wrap gap-3 py-2"></div>
+                            </div>
+                            <div>
+                                <p class="font-bold border-b-2 mb-2 flex justify-between text-lg">分帳/代購對象管理 <button onclick="addNewMember()" class="text-blue-500">+新增</button></p>
+                                <div id="targetList" class="flex flex-wrap gap-3 py-2"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div class="flex flex-col">
+                                <label class="text-sm font-bold text-stone-500 mb-1">日期</label>
+                                <input type="date" id="expDateInput" class="p-3 border rounded-xl">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-bold text-stone-500 mb-1">項目</label>
+                                <input type="text" id="expName" placeholder="例如：泰式晚餐" class="p-3 border rounded-xl">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div class="flex flex-col">
+                                <label class="text-sm font-bold text-stone-500 mb-1">幣別</label>
+                                <select id="expCurrency" class="p-3 border rounded-xl bg-white font-bold">
+                                    <option value="THB">泰幣 ฿</option>
+                                    <option value="TWD">台幣 $</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col col-span-2">
+                                <label class="text-sm font-bold text-stone-500 mb-1">金額</label>
+                                <input type="number" id="expAmount" placeholder="輸入金額" class="p-3 border rounded-xl">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div class="flex flex-col">
+                                <label class="text-sm font-bold text-stone-500 mb-1">方式</label>
+                                <select id="expMethod" onchange="toggleCardField()" class="p-3 border rounded-xl bg-white">
+                                    <option value="CASH">💵 現金付款</option>
+                                    <option value="CARD">💳 刷卡付款</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-sm font-bold text-stone-500 mb-1">誰付的錢</label>
+                                <select id="expPayer" class="p-3 border rounded-xl bg-white font-bold"></select>
+                            </div>
+                        </div>
+                        
+                        <div id="cardRewardSection" class="hidden space-y-4 mb-4 bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <select id="expCardType" class="p-2 border rounded-xl bg-white font-bold text-blue-800">
+                                    <option value="台新Richart">💳 台新Richart</option>
+                                    <option value="中信cube">💳 中信cube</option>
+                                    <option value="玉山熊本熊">💳 玉山熊本熊</option>
+                                    <option value="玉山unicard">💳 玉山unicard</option>
+                                </select>
+                                <div class="flex items-center gap-3">
+                                    <span class="font-bold text-blue-700 whitespace-nowrap">回饋%</span>
+                                    <input type="number" id="expRewardRate" value="3" step="0.1" class="w-full p-2 border rounded-xl">
+                                </div>
+                            </div>
+                            <div class="text-right font-bold text-blue-600" id="rewardPreview">預計回饋: $0</div>
+                        </div>
+
+                        <div class="flex flex-col mb-6">
+                            <label class="text-sm font-bold text-stone-500 mb-1">備註</label>
+                            <input type="text" id="expNote" placeholder="選填備註內容" class="p-3 border rounded-xl">
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-2xl border border-stone-200 mb-6">
+                            <p class="font-bold text-stone-500 mb-4 uppercase tracking-wider">分帳或代購對象 (可複選)</p>
+                            <div id="splitCheckboxes" class="flex flex-wrap gap-6"></div>
+                        </div>
+
+                        <button onclick="addExpense()" class="w-full bg-[var(--jp-bamboo)] text-white py-4 rounded-2xl text-xl font-bold shadow-lg hover:brightness-95 active:scale-[0.98] transition-all">確認加入帳單</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center border-b-2 pb-2">
+                            <h3 class="font-bold text-xl text-stone-600">支出明細紀錄</h3>
+                            <div class="flex gap-3">
+                                <button onclick="copyLineReport()" class="bg-green-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-600 shadow-sm">📋 複製報表</button>
+                                <select id="dateFilter" onchange="renderExpenses()" class="border-2 rounded-xl px-3 py-2 bg-white font-bold"></select>
+                            </div>
+                        </div>
+                        <div id="expenseHistory" class="space-y-4 max-h-[800px] overflow-y-auto pr-2"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-8">
+                    <div id="settlementReport" class="bg-white p-8 rounded-3xl border-4 border-[var(--jp-indigo)] shadow-2xl space-y-8 sticky top-4">
+                        <div class="text-center pb-6 border-b-2">
+                            <p class="text-stone-500 font-bold mb-2 uppercase tracking-[0.2em]">🌍 總公費團費 (不含代購)</p>
+                            <p class="text-6xl font-black text-[#3E517A] tracking-tighter" id="ui-total-exp">$0</p>
+                            <div class="bg-green-50 inline-block px-6 py-2 rounded-full mt-4">
+                                <p class="text-lg font-bold text-green-700" id="ui-total-reward">✨ 信用卡已節省：$0</p>
+                            </div>
+                        </div>
+                        
+                        <div id="individualStats" class="space-y-6"></div>
+                        <div id="finalSettlementBox"></div> 
+                        <button onclick="clearAllExpenses()" class="w-full bg-red-50 text-red-500 py-4 rounded-2xl font-bold border-2 border-red-100 hover:bg-red-100 transition-colors">🗑️ 清空所有帳單資料</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="itinerary-page" class="p-4 sm:p-8">
+            <div class="flex flex-wrap justify-between items-end mb-8 gap-6">
+                <div class="flex gap-4">
+                    <button onclick="addRow()" class="bg-[var(--jp-indigo)] text-white px-8 py-3 rounded-2xl font-bold text-lg shadow-lg hover:opacity-90">+ 新增景點</button>
+                    <div class="flex flex-col">
+                        <label class="font-bold text-stone-400 mb-1 px-1">🔍 篩選日期</label>
+                        <select id="itineraryDateFilter" onchange="renderTable()" class="p-3 border-2 rounded-xl bg-white font-bold text-indigo-700 min-w-[200px]"></select>
+                    </div>
+                </div>
+                <div class="text-lg font-bold bg-stone-100 px-6 py-3 rounded-2xl border-2">
+                    即時匯率: 1 THB = <input type="number" id="rateInput" step="0.001" class="w-20 bg-transparent text-center border-b-2 border-stone-400 focus:border-indigo-500 outline-none" onchange="updateRate(this.value)"> TWD
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto border-2 rounded-2xl shadow-sm bg-white">
+                <table class="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr>
+                            <th class="header-cell w-48">日期</th>
+                            <th class="header-cell w-32">時間</th>
+                            <th class="header-cell w-32">交通</th>
+                            <th class="header-cell">地點項目</th>
+                            <th class="header-cell">地圖/備註連結</th>
+                            <th class="header-cell text-right w-36">預算(฿)</th>
+                            <th class="header-cell text-center w-20">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itineraryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getDatabase, ref, set, onValue } from "firebase/database";
+        
+        const firebaseConfig = {
+            databaseURL: "https://journey-b926c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "journey-b926c"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const travelRef = ref(db, 'trips/thailand_trip_data');
+        
+        let travelData = { 
+            itinerary: [], 
+            expenses: [], 
+            rate: 0.95, 
+            members: ["Ruby", "Wen", "R代購", "W代購"], 
+            payers: ["Ruby", "Wen"] 
+        };
+
+        onValue(travelRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                travelData = data;
+                if(!travelData.itinerary) travelData.itinerary = [];
+                if(!travelData.expenses) travelData.expenses = [];
+                if(!travelData.members) travelData.members = ["Ruby", "Wen", "R代購", "W代購"];
+                if(!travelData.payers) travelData.payers = ["Ruby", "Wen"];
+                document.getElementById('syncStatus').innerHTML = "🟢 雲端同步中";
+                renderAll();
+            }
+        });
+
+        function pushToCloud() { set(travelRef, travelData); }
+
+        function renderAll() {
+            updateDateFilterOptions();
+            updateItineraryFilterOptions();
+            renderConfigLists();
+            renderTable();
+            renderExpenses();
+        }
+
+        window.toggleManager = () => document.getElementById('listManager').classList.toggle('hidden');
+        
+        window.renderConfigLists = () => {
+            document.getElementById('payerList').innerHTML = travelData.payers.map(p => `
+                <span class="bg-stone-100 px-4 py-2 rounded-xl flex items-center gap-2 font-bold">
+                    ${p} <button onclick="removePayer('${p}')" class="text-red-400 text-xl">×</button>
+                </span>`).join('');
+            document.getElementById('targetList').innerHTML = travelData.members.map(m => `
+                <span class="bg-stone-100 px-4 py-2 rounded-xl flex items-center gap-2 font-bold ${m.includes('代購') ? 'text-orange-600' : ''}">
+                    ${m} <button onclick="removeTarget('${m}')" class="text-red-400 text-xl">×</button>
+                </span>`).join('');
+            updateEntryUI();
+        };
+
+        function updateEntryUI() {
+            document.getElementById('expPayer').innerHTML = travelData.payers.map(p => `<option value="${p}">${p} 付款</option>`).join('');
+            document.getElementById('splitCheckboxes').innerHTML = travelData.members.map(m => `
+                <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-stone-50 rounded-lg transition-colors ${m.includes('代購')?'text-orange-600':''}">
+                    <input type="checkbox" value="${m}" checked> <span class="font-bold">${m}</span>
+                </label>`).join('');
+        }
+
+        window.addNewPayer = () => { const n = prompt("請輸入付款人名稱:"); if(n) { travelData.payers.push(n); pushToCloud(); } };
+        window.addNewMember = () => { const n = prompt("請輸入成員或代購名稱:"); if(n) { travelData.members.push(n); pushToCloud(); } };
+        window.removePayer = (n) => { if(confirm(`確定刪除 ${n}？`)) { travelData.payers = travelData.payers.filter(p => p !== n); pushToCloud(); } };
+        window.removeTarget = (n) => { if(confirm(`確定刪除 ${n}？`)) { travelData.members = travelData.members.filter(m => m !== n); pushToCloud(); } };
+
+        window.toggleCardField = () => document.getElementById('cardRewardSection').classList.toggle('hidden', document.getElementById('expMethod').value !== 'CARD');
+        
+        window.addExpense = () => {
+            const date = document.getElementById('expDateInput').value;
+            const name = document.getElementById('expName').value;
+            const amtRaw = parseFloat(document.getElementById('expAmount').value);
+            const currency = document.getElementById('expCurrency').value;
+            const method = document.getElementById('expMethod').value;
+            const payer = document.getElementById('expPayer').value;
+            const note = document.getElementById('expNote').value;
+            const cardType = method === 'CARD' ? document.getElementById('expCardType').value : "現金";
+            const rewardRate = method === 'CARD' ? parseFloat(document.getElementById('expRewardRate').value) || 0 : 0;
+            const splitWith = Array.from(document.querySelectorAll('#splitCheckboxes input:checked')).map(i => i.value);
+            
+            if(!name || !amtRaw || !date) return alert("⚠️ 請填寫完整日期、項目與金額！");
+            let amtTWD = currency === 'TWD' ? amtRaw : Math.round(amtRaw * travelData.rate);
+            let rewardAmt = Math.round(amtTWD * (rewardRate / 100));
+
+            travelData.expenses.push({ 
+                id: Date.now(), date, name, amt: currency === 'THB' ? amtRaw : Math.round(amtRaw / travelData.rate), 
+                amtTWD, method, payer, splitWith, note: note || "", cardType, rewardRate, rewardAmt 
+            });
+            pushToCloud();
+        };
+
+        window.renderExpenses = () => {
+            const historyDiv = document.getElementById('expenseHistory');
+            const filterDate = document.getElementById('dateFilter').value;
+            const exps = travelData.expenses || [];
+            const filtered = filterDate === 'all' ? exps : exps.filter(e => e.date === filterDate);
+            const sorted = filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            historyDiv.innerHTML = sorted.map(e => `
+                <div id="exp-card-${e.id}" class="bg-white p-6 rounded-2xl shadow-md border border-stone-200 text-lg mb-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <span class="font-bold text-2xl text-[var(--jp-indigo)] editable-content name-val">${e.name}</span>
+                            <div class="font-bold text-stone-400 mt-2">
+                                📅 <span class="editable-content date-val">${e.date}</span> | 
+                                👤 <span class="text-stone-700">${e.payer}</span> 付款
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="toggleEditMode(this, ${e.id})" class="text-blue-500 text-2xl">✏️</button>
+                            <button onclick="deleteExpense(${e.id})" class="text-stone-300 text-2xl hover:text-red-400">✕</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 bg-stone-50 p-6 rounded-xl font-bold">
+                        <div>泰銖 ฿ <span class="editable-content thb-val text-2xl font-mono">${e.amt}</span></div>
+                        <div class="text-blue-600 text-right">台幣 $ <span class="editable-content twd-val text-2xl font-mono">${e.amtTWD}</span></div>
+                        <div class="text-stone-500 col-span-2 border-t pt-4 mt-2">
+                            💳 ${e.cardType} (<span class="editable-content reward-rate-val">${e.rewardRate}</span>%) 
+                            <span class="ml-4 text-green-600">回饋: $<span class="editable-content reward-amt-val">${e.rewardAmt}</span></span>
+                        </div>
+                        <div class="col-span-2 italic text-stone-500 border-t pt-4 flex flex-wrap gap-4 items-center">
+                            分帳對象：
+                            ${travelData.members.map(m => `
+                                <label class="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border ${m.includes('代購')?'text-orange-500 border-orange-100':'border-stone-200'}">
+                                    <input type="checkbox" class="split-checkbox" disabled 
+                                        ${(e.splitWith||[]).includes(m)?'checked':''} 
+                                        onclick="toggleSplitMember(${e.id}, '${m}')"> <span>${m}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ${e.note ? `<div class="mt-4 text-stone-400 italic font-medium">註：${e.note}</div>` : ''}
+                </div>`).join('');
+            calculateSettlement();
+        };
+
+        window.toggleSplitMember = (expId, memberName) => {
+            const idx = travelData.expenses.findIndex(e => e.id === expId);
+            if (idx === -1) return;
+            let splitList = travelData.expenses[idx].splitWith || [];
+            splitList = splitList.includes(memberName) ? splitList.filter(m => m !== memberName) : [...splitList, memberName];
+            travelData.expenses[idx].splitWith = splitList;
+            pushToCloud();
+        };
+
+        window.calculateSettlement = () => {
+            let totalGroupTwd = 0; let totalRewardSaved = 0; 
+            let paidMap = {}; let shareMap = {}; let personalBuyMap = {}; let rewardMap = {}; 
+
+            travelData.members.forEach(m => { shareMap[m] = 0; personalBuyMap[m] = 0; });
+            travelData.payers.forEach(p => { paidMap[p] = 0; rewardMap[p] = 0; });
+
+            travelData.expenses.forEach(e => {
+                const isPersonalAgent = e.splitWith.some(m => m.includes('代購'));
+                const reward = e.rewardAmt || 0;
+                const netTwd = e.amtTWD - reward;
+                totalRewardSaved += reward;
+                paidMap[e.payer] += e.amtTWD; rewardMap[e.payer] += reward; 
+                const splitWith = e.splitWith || [];
+                if (splitWith.length === 0) return;
+                const sharePerPerson = netTwd / splitWith.length;
+                splitWith.forEach(m => {
+                    if (m.includes('代購')) personalBuyMap[m] = (personalBuyMap[m] || 0) + sharePerPerson;
+                    else { shareMap[m] = (shareMap[m] || 0) + sharePerPerson; if (!isPersonalAgent) totalGroupTwd += sharePerPerson; }
+                });
+            });
+
+            document.getElementById('ui-total-exp').innerText = `$${Math.round(totalGroupTwd).toLocaleString()}`;
+            document.getElementById('ui-total-reward').innerText = `✨ 信用卡已節省：$${Math.round(totalRewardSaved).toLocaleString()}`;
+
+            const statsDiv = document.getElementById('individualStats');
+            statsDiv.innerHTML = travelData.payers.map(p => {
+                const purePaid = paidMap[p] - rewardMap[p];
+                const balance = purePaid - shareMap[p] - (personalBuyMap[p+'代購'] || 0);
+                return `
+                <div class="bg-stone-50 p-6 rounded-2xl border-2 border-stone-100 shadow-sm">
+                    <div class="flex justify-between items-center mb-4 border-b-2 pb-2">
+                        <span class="font-bold text-2xl text-[var(--jp-indigo)]">${p} 統計</span>
+                        <span class="font-black text-xl ${balance >= 0 ? 'text-green-600' : 'text-red-500'}">
+                            ${balance >= 0 ? '應收' : '應付'} $${Math.abs(Math.round(balance)).toLocaleString()}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 text-lg font-medium">
+                        <div class="flex justify-between"><span class="text-stone-500">個人代墊(扣回饋):</span> <span>$${Math.round(purePaid).toLocaleString()}</span></div>
+                        <div class="flex justify-between"><span class="text-stone-500">個人應負團費:</span> <span>$${Math.round(shareMap[p]).toLocaleString()}</span></div>
+                        <div class="flex justify-between"><span class="text-orange-600">個人代購支出:</span> <span class="text-orange-600">$${Math.round(personalBuyMap[p+'代購'] || 0).toLocaleString()}</span></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const finalDiv = document.getElementById('finalSettlementBox');
+            let settlementHTML = `<div class="mt-6 p-8 rounded-[2rem] border-4 border-rose-200 bg-rose-50/50 space-y-4">
+                <p class="text-lg font-black text-rose-800 text-center mb-4 uppercase tracking-[0.2em]">📋 最終結算狀態</p><div class="space-y-3">`;
+            travelData.payers.forEach(p => {
+                const bal = Math.round((paidMap[p]||0)-(rewardMap[p]||0)-(shareMap[p]||0)-(personalBuyMap[p+'代購']||0));
+                settlementHTML += `<div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border-2 ${bal>=0?'border-green-100':'border-red-100'}">
+                    <span class="font-bold text-xl">${p}</span>
+                    <span class="font-black text-2xl ${bal>=0?'text-green-600':'text-red-500'}">${bal>=0?'應收':'應付'} $${Math.abs(bal).toLocaleString()}</span>
+                </div>`;
+            });
+            finalDiv.innerHTML = settlementHTML + `</div></div>`;
+        };
+
+        window.copyLineReport = () => {
+            const filterDate = document.getElementById('dateFilter').value;
+            const exps = travelData.expenses.filter(e => filterDate === 'all' || e.date === filterDate);
+            let totalG = 0, totalR = 0;
+            let rPaid = {}, rShare = {}, rBuy = {}, rReward = {};
+            travelData.members.forEach(m => { rShare[m] = 0; rBuy[m] = 0; });
+            travelData.payers.forEach(p => { rPaid[p] = 0; rReward[p] = 0; });
+
+            exps.forEach(e => {
+                const r = e.rewardAmt || 0; const net = e.amtTWD - r; totalR += r;
+                rPaid[e.payer] += e.amtTWD; rReward[e.payer] += r;
+                const s = (e.splitWith || []).length > 0 ? net / e.splitWith.length : 0;
+                (e.splitWith || []).forEach(m => {
+                    if(m.includes('代購')) rBuy[m] += s;
+                    else { rShare[m] += s; if(!e.splitWith.some(x=>x.includes('代購'))) totalG += s; }
+                });
+            });
+
+            let txt = `【旅費結算 - ${filterDate === 'all' ? '全部' : filterDate}】\n━━━━━━━━━━━━━━\n💰 總團費：$${Math.round(totalG).toLocaleString()}\n✨ 已省回饋：$${Math.round(totalR).toLocaleString()}\n\n`;
+            travelData.payers.forEach(p => {
+                const bal = Math.round((rPaid[p]||0)-(rReward[p]||0)-(rShare[p]||0)-(rBuy[p+'代購']||0));
+                txt += `👤 【${p}】\n  ▫️ 應付團費: $${Math.round(rShare[p]).toLocaleString()}\n  ▫️ 代購支出: $${Math.round(rBuy[p+'代購']||0).toLocaleString()}\n  🎯 結算：${bal >= 0 ? '應收' : '應付'} $${Math.abs(bal).toLocaleString()}\n\n`;
+            });
+            navigator.clipboard.writeText(txt).then(() => alert("報表已複製！"));
+        };
+
+        window.addRow = () => {
+            const d = new Date().toISOString().split('T')[0];
+            travelData.itinerary.push({ date: d, time: "09:00", trans: "🚶", location: "點擊修改地點", mapUrl: "", amount: 0 });
+            pushToCloud();
+        };
+        window.updateCell = (idx, f, v) => {
+            travelData.itinerary[idx][f] = f === 'amount' ? parseFloat(v) || 0 : v;
+            pushToCloud();
+        };
+        window.renderTable = () => {
+            const fv = document.getElementById('itineraryDateFilter').value;
+            let items = travelData.itinerary.map((it, i) => ({...it, i})).sort((a,b)=>a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+            if(fv !== 'all') items = items.filter(it => it.date === fv);
+            document.getElementById('itineraryBody').innerHTML = items.map(it => `
+                <tr class="hover:bg-stone-50 border-b-2 text-lg font-medium">
+                    <td class="p-4"><input type="date" value="${it.date}" onchange="updateCell(${it.i}, 'date', this.value)" class="date-input-table"></td>
+                    <td class="p-4"><input type="time" value="${it.time}" onchange="updateCell(${it.i}, 'time', this.value)" class="bg-transparent font-bold"></td>
+                    <td class="p-4" contenteditable="true" onblur="updateCell(${it.i}, 'trans', this.innerText)">${it.trans}</td>
+                    <td class="p-4 font-black text-indigo-900" contenteditable="true" onblur="updateCell(${it.i}, 'location', this.innerText)">${it.location}</td>
+                    <td class="p-4 text-blue-500 truncate max-w-[200px]" contenteditable="true" onblur="updateCell(${it.i}, 'mapUrl', this.innerText)">${it.mapUrl || '貼上連結'}</td>
+                    <td class="p-4 text-right"><input type="number" value="${it.amount}" class="text-right w-24 bg-transparent font-black" onblur="updateCell(${it.i}, 'amount', this.value)"></td>
+                    <td class="p-4 text-center"><button onclick="deleteRow(${it.i})" class="text-stone-300 hover:text-red-400">✕</button></td>
+                </tr>`).join('');
+            document.getElementById('rateInput').value = travelData.rate;
+        };
+
+        window.deleteRow = (i) => { if(confirm("確定刪除此行程？")) { travelData.itinerary.splice(i, 1); pushToCloud(); } };
+        window.deleteExpense = (id) => { if(confirm("確定刪除此筆支出？")) { travelData.expenses = travelData.expenses.filter(e => e.id !== id); pushToCloud(); } };
+        window.clearAllExpenses = () => { if(confirm("⚠️ 注意！這將清空所有記帳資料，確定嗎？")) { travelData.expenses = []; pushToCloud(); } };
+        window.updateRate = (v) => { travelData.rate = parseFloat(v); pushToCloud(); };
+        window.switchPage = (p) => {
+            document.getElementById('itinerary-page').classList.toggle('hidden', p !== 'itinerary');
+            document.getElementById('split-page').classList.toggle('hidden', p !== 'split');
+            document.getElementById('tab-itinerary').classList.toggle('active-tab', p === 'itinerary');
+            document.getElementById('tab-split').classList.toggle('active-tab', p === 'split');
+        };
+
+        window.toggleEditMode = (btn, id) => {
+            const card = document.getElementById(`exp-card-${id}`);
+            const isEditing = card.classList.toggle('is-editing');
+            const checkboxes = card.querySelectorAll('.split-checkbox');
+            const f = { 
+                name: card.querySelector('.name-val'), date: card.querySelector('.date-val'),
+                thb: card.querySelector('.thb-val'), twd: card.querySelector('.twd-val'),
+                rwRate: card.querySelector('.reward-rate-val'), rwAmt: card.querySelector('.reward-amt-val')
+            };
+            if(isEditing) {
+                btn.innerText = "✅"; Object.values(f).forEach(el => el.contentEditable = true); 
+                checkboxes.forEach(cb => cb.disabled = false); f.name.focus();
+            } else {
+                btn.innerText = "✏️"; Object.values(f).forEach(el => el.contentEditable = false);
+                checkboxes.forEach(cb => cb.disabled = true);
+                const idx = travelData.expenses.findIndex(e => e.id === id);
+                if(idx !== -1) {
+                    travelData.expenses[idx].name = f.name.innerText;
+                    travelData.expenses[idx].date = f.date.innerText;
+                    travelData.expenses[idx].amt = parseFloat(f.thb.innerText) || 0;
+                    travelData.expenses[idx].amtTWD = parseFloat(f.twd.innerText) || 0;
+                    travelData.expenses[idx].rewardRate = parseFloat(f.rwRate.innerText) || 0;
+                    travelData.expenses[idx].rewardAmt = parseFloat(f.rwAmt.innerText) || 0;
+                    pushToCloud();
+                }
+            }
+        };
+
+        function updateDateFilterOptions() {
+            const filter = document.getElementById('dateFilter');
+            const currentVal = filter.value;
+            const dates = [...new Set(travelData.expenses.map(e => e.date))].sort();
+            filter.innerHTML = '<option value="all">📅 全部日期</option>' + dates.map(d => `<option value="${d}">${d}</option>`).join('');
+            filter.value = currentVal || 'all';
+        }
+
+        function updateItineraryFilterOptions() {
+            const filter = document.getElementById('itineraryDateFilter');
+            const currentVal = filter.value;
+            const dates = [...new Set(travelData.itinerary.map(it => it.date))].filter(d=>d).sort();
+            filter.innerHTML = '<option value="all">📅 顯示全部日期</option>' + dates.map(d => `<option value="${d}">${d}</option>`).join('');
+            filter.value = currentVal || 'all';
+        }
+
+        document.getElementById('expAmount').addEventListener('input', updateRewardPreview);
+        function updateRewardPreview() {
+            const amt = parseFloat(document.getElementById('expAmount').value) || 0;
+            const rate = parseFloat(document.getElementById('expRewardRate').value) || 0;
+            const curr = document.getElementById('expCurrency').value;
+            let twdAmt = curr === 'TWD' ? amt : amt * travelData.rate;
+            document.getElementById('rewardPreview').innerText = `預計回饋: $${Math.round(twdAmt * (rate / 100))}`;
+        }
+    </script>
+</body>
+</html>
